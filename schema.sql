@@ -15,3 +15,12 @@ CREATE TABLE `room` (
   `joined_user_count` int DEFAULT NULL,
   PRIMARY KEY (`room_id`)
 );
+
+DROP TABLE IF EXISTS `room_members`;
+CREATE TABLE `room_members` (
+  `token` varchar(255) NOT NULL,
+  `room_id` bigint NOT NULL,
+  `select_difficulty` int DEFAULT NULL,
+  PRIMARY KEY (`token`, `room_id`),
+  UNIQUE KEY `token` (`token`)
+);

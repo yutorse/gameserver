@@ -80,8 +80,8 @@ class RoomCreateResponse(BaseModel):
 
 
 @app.post("/room/create", response_model=RoomCreateResponse)
-def room_create(req: RoomCreateRequest):
-    room_id = room_model.create_room(req.live_id)
+def room_create(req: RoomCreateRequest, token: str = Depends(get_auth_token)):
+    room_id = room_model.create_room(req.live_id, req.select_difficulty, token)
     return RoomCreateResponse(room_id=room_id)
 
 
@@ -109,6 +109,6 @@ class RoomJoinResponse(BaseModel):
 
 
 @app.post("/room/join", response_model=RoomJoinResponse)
-def room_join(req: RoomJoinRequest):
-    join_room_result = room_model.join_room(req.room_id, req.select_difficulty.value)
+def room_join(req: RoomJoinRequest, token: str = Depends(get_auth_token)):
+    join_room_result = room_model.join_room(req.room_id, req.select_difficulty.value, token)
     return RoomJoinResponse(join_room_result=join_room_result)

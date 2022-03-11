@@ -31,7 +31,7 @@ class RoomInfo(BaseModel):
     max_user_count: int = MAX_USER_COUNT
 
 
-def create_room(live_id: int) -> int:
+def create_room(live_id: int, select_difficulty: LiveDifficulty, token: str) -> int:
     """Create new room and returns room_id"""
     with engine.begin() as conn:
         result = conn.execute(
@@ -41,6 +41,12 @@ def create_room(live_id: int) -> int:
             dict(live_id=live_id),
         )
         room_id = result.lastrowid  # 最後の行を参照することで room_id を取得
+        conn.execute(
+            text(
+                "INSERT INTO `room_members` (token, room_id, select_difficulty) VALUES (:token, :room_id, :select_difficulty)"
+            ),
+            dict(token=token, room_id=room_id, select_difficulty=select_difficulty.value),
+        )
     return room_id
 
 
@@ -67,7 +73,7 @@ def get_room_list(live_id: int) -> list[RoomInfo]: # roomが存在しないと�
         return available_rooms
 
 
-def join_room(room_id: int, select_difficulty: int) -> JoinRoomResult:
+def join_room(room_id: int, select_difficulty: int, token: str) -> JoinRoomResult:
     """join the room specified by room_id"""
     with engine.begin() as conn:
         result = conn.execute(
@@ -84,6 +90,12 @@ def join_room(room_id: int, select_difficulty: int) -> JoinRoomResult:
                         "UPDATE `room` SET `joined_user_count`=:increment_user_count WHERE `room_id`=:room_id"
                     ),
                     dict(increment_user_count=(row.joined_user_count+1), room_id=room_id)
+                )
+                conn.execute(
+                    text(
+                        "INSERT INTO `room_members` (token, room_id, select_difficulty) VALUES (:token, :room_id, :select_difficulty)"
+                    ),
+                    dict(room_id=room_id, select_difficulty=select_difficulty, token=token)
                 )
                 return JoinRoomResult.Ok
             else:
