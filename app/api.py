@@ -6,8 +6,7 @@ from pydantic import BaseModel
 
 from app.room_model import JoinRoomResult, LiveDifficulty, RoomInfo
 
-from . import model
-from . import room_model
+from . import model, room_model
 from .model import SafeUser
 
 app = FastAPI()
@@ -110,5 +109,7 @@ class RoomJoinResponse(BaseModel):
 
 @app.post("/room/join", response_model=RoomJoinResponse)
 def room_join(req: RoomJoinRequest, token: str = Depends(get_auth_token)):
-    join_room_result = room_model.join_room(req.room_id, req.select_difficulty.value, token)
+    join_room_result = room_model.join_room(
+        req.room_id, req.select_difficulty.value, token
+    )
     return RoomJoinResponse(join_room_result=join_room_result)

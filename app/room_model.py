@@ -10,7 +10,8 @@ from sqlalchemy.exc import NoResultFound
 
 from .db import engine
 
-MAX_USER_COUNT = 4 # 部屋に入れる最大人数
+MAX_USER_COUNT = 4  # 部屋に入れる最大人数
+
 
 class LiveDifficulty(IntEnum):
     normal = 1
@@ -45,20 +46,20 @@ def create_room(live_id: int, select_difficulty: LiveDifficulty, token: str) -> 
             text(
                 "INSERT INTO `room_members` (token, room_id, select_difficulty) VALUES (:token, :room_id, :select_difficulty)"
             ),
-            dict(token=token, room_id=room_id, select_difficulty=select_difficulty.value),
+            dict(
+                token=token, room_id=room_id, select_difficulty=select_difficulty.value
+            ),
         )
     return room_id
 
 
-def get_room_list(live_id: int) -> list[RoomInfo]: # roomが存在しないときは空リストを返す。
+def get_room_list(live_id: int) -> list[RoomInfo]:  # roomが存在しないときは空リストを返す。
     """Search available rooms"""
     available_rooms = []
     with engine.begin() as conn:
         if live_id == 0:
             result = conn.execute(
-                text(
-                    "SELECT `room_id`, `live_id`, `joined_user_count` FROM `room`"
-                ),
+                text("SELECT `room_id`, `live_id`, `joined_user_count` FROM `room`"),
             )
         else:
             result = conn.execute(
@@ -69,7 +70,13 @@ def get_room_list(live_id: int) -> list[RoomInfo]: # roomが存在しないと�
             )
         result = result.all()
         for row in result:
-            available_rooms.append(RoomInfo(room_id=row.room_id, live_id=row.live_id, joined_user_count=row.joined_user_count))
+            available_rooms.append(
+                RoomInfo(
+                    room_id=row.room_id,
+                    live_id=row.live_id,
+                    joined_user_count=row.joined_user_count,
+                )
+            )
         return available_rooms
 
 
@@ -89,13 +96,20 @@ def join_room(room_id: int, select_difficulty: int, token: str) -> JoinRoomResul
                     text(
                         "UPDATE `room` SET `joined_user_count`=:increment_user_count WHERE `room_id`=:room_id"
                     ),
-                    dict(increment_user_count=(row.joined_user_count+1), room_id=room_id)
+                    dict(
+                        increment_user_count=(row.joined_user_count + 1),
+                        room_id=room_id,
+                    ),
                 )
                 conn.execute(
                     text(
                         "INSERT INTO `room_members` (token, room_id, select_difficulty) VALUES (:token, :room_id, :select_difficulty)"
                     ),
-                    dict(room_id=room_id, select_difficulty=select_difficulty, token=token)
+                    dict(
+                        room_id=room_id,
+                        select_difficulty=select_difficulty,
+                        token=token,
+                    ),
                 )
                 return JoinRoomResult.Ok
             else:
@@ -103,4 +117,4 @@ def join_room(room_id: int, select_difficulty: int, token: str) -> JoinRoomResul
         except NoResultFound:
             return JoinRoomResult.Disbanded
         # except:
-            # return JoinRoomResult.OtherError
+        # return JoinRoomResult.OtherError
