@@ -44,9 +44,7 @@ def create_user(name: str, leader_card_id: int) -> str:
 def _get_user_by_token(conn, token: str) -> Optional[SafeUser]:
     # TODO: 実装
     result = conn.execute(
-        text(
-            "SELECT `id`, `name`, `leader_card_id` FROM `user` WHERE `token`=:token"
-        ),
+        text("SELECT `id`, `name`, `leader_card_id` FROM `user` WHERE `token`=:token"),
         dict(token=token),
     )
     try:
@@ -54,18 +52,19 @@ def _get_user_by_token(conn, token: str) -> Optional[SafeUser]:
     except NoResultFound:
         return None
     return SafeUser.from_orm(row)
-    #pass
+    # pass
 
 
 def get_user_by_token(token: str) -> Optional[SafeUser]:
     with engine.begin() as conn:
         return _get_user_by_token(conn, token)
 
+
 def update_user(token: str, name: str, leader_card_id: int) -> None:
     # このコードを実装してもらう
     with engine.begin() as conn:
         # TODO: 実装
-        if _get_user_by_token(conn, token) is None: # 指定のトークンを持つユーザがいない場合
+        if _get_user_by_token(conn, token) is None:  # 指定のトークンを持つユーザがいない場合
             raise InvalidToken
         else:
             result = conn.execute(
