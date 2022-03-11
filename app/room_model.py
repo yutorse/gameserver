@@ -17,6 +17,13 @@ class LiveDifficulty(IntEnum):
     hard = 2
 
 
+class JoinRoomResult(IntEnum):
+    Ok = 1
+    RoomFull = 2
+    Disbanded = 3
+    OtherError = 4
+
+
 class RoomInfo(BaseModel):
     room_id: int
     live_id: int
@@ -37,7 +44,7 @@ def create_room(live_id: int) -> int:
     return room_id
 
 
-def get_room_list(live_id: int) -> Optional[RoomInfo]: # roomが存在しないときは空リストを返す。
+def get_room_list(live_id: int) -> list[RoomInfo]: # roomが存在しないときは空リストを返す。
     """Search available rooms"""
     available_rooms = []
     with engine.begin() as conn:
@@ -58,3 +65,30 @@ def get_room_list(live_id: int) -> Optional[RoomInfo]: # roomが存在しない�
         for row in result:
             available_rooms.append(RoomInfo(room_id=row.room_id, live_id=row.live_id, joined_user_count=row.joined_user_count))
         return available_rooms
+
+
+def join_room(room_id: int, select_difficulty: int) -> JoinRoomResult:
+    """join the room specified by room_id"""
+    with engine.begin() as conn:
+        result = conn.execute(
+            text(
+                "SELECT `room_id`, `live_id`, `joined_user_count` FROM `room` WHERE `room_id`=:room_id"
+            ),
+            dict(room_id=room_id),
+        )
+        try:
+            row = result.one()
+            if row.joined_user_count < MAX_USER_COUNT:
+                conn.execute(
+                    text(
+                        "UPDATE `room` SET `joined_user_count`=:increment_user_count WHERE `room_id`=:room_id"
+                    ),
+                    dict(increment_user_count=(row.joined_user_count+1), room_id=room_id)
+                )
+                return JoinRoomResult.Ok
+            else:
+                return JoinRoomResult.RoomFull
+        except NoResultFound:
+            return JoinRoomResult.Disbanded
+        # except:
+            # return JoinRoomResult.OtherError

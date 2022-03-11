@@ -4,7 +4,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
-from app.room_model import LiveDifficulty, RoomInfo
+from app.room_model import JoinRoomResult, LiveDifficulty, RoomInfo
 
 from . import model
 from . import room_model
@@ -97,3 +97,18 @@ class RoomListResponse(BaseModel):
 def get_room_list(req: RoomListRequest):
     room_list = room_model.get_room_list(req.live_id)
     return RoomListResponse(room_info_list=room_list)
+
+
+class RoomJoinRequest(BaseModel):
+    room_id: int
+    select_difficulty: LiveDifficulty
+
+
+class RoomJoinResponse(BaseModel):
+    join_room_result: JoinRoomResult
+
+
+@app.post("/room/join", response_model=RoomJoinResponse)
+def room_join(req: RoomJoinRequest):
+    join_room_result = room_model.join_room(req.room_id, req.select_difficulty.value)
+    return RoomJoinResponse(join_room_result=join_room_result)
