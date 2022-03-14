@@ -273,3 +273,66 @@ def show_result(room_id: int) -> List[ResultUser]:
             dict(room_id=room_id),
         )
         return user_result_list
+
+
+def delete_room_from_db(conn, room_id) -> None:
+    conn.execute(
+        text("DELETE FROM `room` WHERE `room_id`=:room_id"), dict(room_id=room_id)
+    )
+    return
+
+
+def delete_user_from_db(conn, room_id, user_id) -> None:
+    conn.execute(
+        text(
+            "DELETE FROM `room_members` WHERE `room_id`=:room_id AND `user_id`=:user_id"
+        ),
+        dict(room_id=room_id, user_id=user_id),
+    )
+    return
+
+
+def change_host(conn, room_id) -> None:
+    result = conn.execute(
+        text("SELECT `user_id` FROM `room_members` WHERE `room_id`=:room_id"),
+        dict(room_id=room_id),
+    )
+    row = result.first()
+    conn.execute(
+        text("UPDATE `room` SET `host`=:new_host WHERE `room_id`=:room_id"),
+        dict(new_host=row.user_id, room_id=room_id),
+    )
+    return
+
+
+def leave_room(room_id: int, token: str) -> None:
+    with engine.begin() as conn:
+        result = conn.execute(
+            text(
+                "SELECT `joined_user_count`, `host` FROM `room` WHERE `room_id`=:room_id"
+            ),
+            dict(room_id=room_id),
+        )
+        try:
+            row = result.one()
+            user_id = model.get_user_by_token(token).id
+            delete_user_from_db(
+                conn, room_id, user_id
+            )  # room_members table から /room/leave を呼んだユーザを削除
+            if row.joined_user_count == 1:
+                delete_room_from_db(conn, room_id)  # room table から roomの情報を削除
+            else:
+                if row.host == user_id:
+                    change_host(conn, room_id)  # room の host を変更
+                conn.execute(
+                    text(
+                        "UPDATE `room` SET `joined_user_count`=:decrement_user_count WHERE `room_id`=:room_id"
+                    ),
+                    dict(
+                        decrement_user_count=(row.joined_user_count - 1),
+                        room_id=room_id,
+                    ),
+                )
+            return
+        except NoResultFound:
+            return  # TODO : エラーハンドリング
