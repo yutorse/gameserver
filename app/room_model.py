@@ -204,3 +204,12 @@ def wait_room(room_id: int, token: str) -> Tuple[WaitRoomStatus, List[RoomUser]]
     room_status = get_room_status(room_id)
     room_users = get_room_users(room_id, token)
     return (room_status, room_users)
+
+
+def start_room(room_id: int, token: str) -> None:
+    with engine.begin() as conn:
+        conn.execute(
+            text("UPDATE `room` SET `status`=2 WHERE `room_id`=:room_id"),
+            dict(room_id=room_id),
+        )
+    return
