@@ -3,6 +3,7 @@ from enum import Enum
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
+from typing import List
 
 from app.room_model import (
     JoinRoomResult,
@@ -121,12 +122,16 @@ def room_join(req: RoomJoinRequest, token: str = Depends(get_auth_token)):
     return RoomJoinResponse(join_room_result=join_room_result)
 
 
+class RoomWaitRequest(BaseModel):
+    room_id: int
+
+
 class RoomWaitResponse(BaseModel):
     status: WaitRoomStatus
-    room_user_list: list[RoomUser]
+    room_user_list: List[RoomUser]
 
 
 @app.post("/room/wait", response_model=RoomWaitResponse)
-def room_wait(room_id: int, token: str = Depends(get_auth_token)):
-    status, room_user_list = room_model.wait_room(room_id, token)
+def room_wait(req: RoomWaitRequest, token: str = Depends(get_auth_token)):
+    status, room_user_list = room_model.wait_room(req.room_id, token)
     return RoomWaitResponse(status=status, room_user_list=room_user_list)
