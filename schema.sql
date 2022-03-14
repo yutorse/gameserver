@@ -13,7 +13,7 @@ CREATE TABLE `room` (
   `room_id` bigint NOT NULL AUTO_INCREMENT,
   `live_id` int NOT NULL,
   `joined_user_count` int DEFAULT NULL,
-  `status` int DEFAULT 1,
+  `status` int DEFAULT 1, -- 入場OK -> 1, 満員 -> 2, 解散済み -> 3
   `host` bigint NOT NULL,
   PRIMARY KEY (`room_id`)
 );
@@ -23,6 +23,7 @@ CREATE TABLE `room_members` (
   `room_id` bigint NOT NULL,
   `user_id` bigint NOT NULL,
   `select_difficulty` int DEFAULT NULL,
+  `status` int DEFAULT 1, -- プレイ終了前 -> 1, プレイ終了後 -> 2
   `score` int DEFAULT NULL,
   `perfect` int DEFAULT NULL,
   `great` int DEFAULT NULL,

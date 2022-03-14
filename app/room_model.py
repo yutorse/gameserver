@@ -50,6 +50,12 @@ class RoomUser(BaseModel):
     is_host: bool
 
 
+class ResultUser(BaseModel):
+    user_id: int
+    judge_count_list: List[int]
+    score: int
+
+
 def create_room(live_id: int, select_difficulty: LiveDifficulty, token: str) -> int:
     """Create new room and returns room_id"""
     user_id = model.get_user_by_token(token).id
@@ -226,7 +232,7 @@ def finish_room(
     with engine.begin() as conn:
         conn.execute(
             text(
-                "UPDATE `room_members` SET `score`=:score, `perfect`=:perfect, `great`=:great, `good`=:good, `bad`=:bad, `miss`=:miss WHERE `room_id`=:room_id AND`token`=:token"
+                "UPDATE `room_members` SET `status`=2, `score`=:score, `perfect`=:perfect, `great`=:great, `good`=:good, `bad`=:bad, `miss`=:miss WHERE `room_id`=:room_id AND`token`=:token"
             ),
             dict(
                 score=score,
@@ -239,7 +245,37 @@ def finish_room(
                 token=token,
             ),
         )
-        conn.execute(
-            text("DELETE FROM `room` WHERE `room_id`=:room_id"), dict(room_id=room_id)
-        )
     return None
+
+
+def show_result(room_id: int) -> List[ResultUser]:
+    user_result_list = []
+    with engine.begin() as conn:
+        result = conn.execute(
+            text(
+                "SELECT `user_id`, `status`, `score`, `perfect`, `great`, `good`, `bad`, `miss` FROM `room_members` WHERE `room_id`=:room_id"
+            ),
+            dict(
+                room_id=room_id,
+            )
+        )
+        result = result.all()
+        for row in result:
+            if(row.status == 1):
+                return [] # まだ全員がリザルト画面に遷移していない場合
+            user_result_list.append(
+                ResultUser(
+                    user_id=row.user_id,
+                    judge_count_list=[row.perfect, row.great, row.good, row.bad, row.miss],
+                    score=row.score
+                )
+            )
+        conn.execute(
+            text(
+                "UPDATE `room` SET `status`=3 WHERE `room_id`=:room_id"
+            ),
+            dict(
+                room_id=room_id
+            )
+        )
+        return user_result_list

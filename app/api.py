@@ -12,6 +12,7 @@ from app.room_model import (
     RoomInfo,
     RoomUser,
     WaitRoomStatus,
+    ResultUser,
 )
 
 from . import model, room_model
@@ -158,3 +159,17 @@ class RoomEndRequest(BaseModel):
 def room_end(req: RoomEndRequest, token: str = Depends(get_auth_token)):
     room_model.finish_room(req.room_id, req.score, req.judge_count_list, token)
     return {}
+
+
+class RoomResultRequest(BaseModel):
+    room_id: int
+
+
+class RoomResultResponse(BaseModel):
+    result_user_list: List[ResultUser]
+
+
+@app.post("/room/result", response_model=RoomResultResponse)
+def room_result(req: RoomResultRequest):
+    result_user_list = room_model.show_result(req.room_id)
+    return RoomResultResponse(result_user_list=result_user_list)
