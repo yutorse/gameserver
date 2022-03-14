@@ -120,20 +120,14 @@ def join_room(room_id: int, select_difficulty: int, token: str) -> JoinRoomResul
         try:
             row = result.one()
             if row.joined_user_count < MAX_USER_COUNT:
-                conn.execute(
-                    text(
-                        "UPDATE `room` SET `joined_user_count`=:increment_user_count WHERE `room_id`=:room_id"
-                    ),
-                    dict(
-                        increment_user_count=(row.joined_user_count + 1),
-                        room_id=room_id,
-                    ),
+                query = (
+                    "UPDATE `room` SET `joined_user_count`=:increment_user_count WHERE `room_id`=:room_id;"
+                    "INSERT INTO `room_members` (room_id, user_id, select_difficulty, token) VALUES (:room_id, :user_id, :select_difficulty, :token)"
                 )
                 conn.execute(
-                    text(
-                        "INSERT INTO `room_members` (room_id, user_id, select_difficulty, token) VALUES (:room_id, :user_id, :select_difficulty, :token)"
-                    ),
+                    text(query),
                     dict(
+                        increment_user_count=(row.joined_user_count + 1),
                         room_id=room_id,
                         user_id=model.get_user_by_token(token).id,
                         select_difficulty=select_difficulty,
@@ -149,66 +143,64 @@ def join_room(room_id: int, select_difficulty: int, token: str) -> JoinRoomResul
         # return JoinRoomResult.OtherError
 
 
-def get_room_status(room_id: int) -> WaitRoomStatus:
-    with engine.begin() as conn:
-        result = conn.execute(
-            text("SELECT `status` FROM `room` WHERE `room_id`=:room_id"),
-            dict(room_id=room_id),
-        )
-        try:
-            row = result.one()
-            if row.status == 1:
-                return WaitRoomStatus.Waiting
-            elif row.status == 2:
-                return WaitRoomStatus.LiveStart
-            else:
-                return WaitRoomStatus.Dissolution
-        except NoResultFound:
+def get_room_status(conn, room_id: int) -> WaitRoomStatus:
+    result = conn.execute(
+        text("SELECT `status` FROM `room` WHERE `room_id`=:room_id"),
+        dict(room_id=room_id),
+    )
+    try:
+        row = result.one()
+        if row.status == 1:
+            return WaitRoomStatus.Waiting
+        elif row.status == 2:
+            return WaitRoomStatus.LiveStart
+        else:
             return WaitRoomStatus.Dissolution
+    except NoResultFound:
+        return WaitRoomStatus.Dissolution
 
 
-def get_room_host(room_id: int) -> Optional[str]:
-    with engine.begin() as conn:
-        result = conn.execute(
-            text("SELECT `host` FROM `room` WHERE `room_id`=:room_id"),
-            dict(room_id=room_id),
-        )
-        try:
-            row = result.one()
-            return row.host
-        except NoResultFound:
-            return None
+def get_room_host(conn, room_id: int) -> Optional[str]:
+    result = conn.execute(
+        text("SELECT `host` FROM `room` WHERE `room_id`=:room_id"),
+        dict(room_id=room_id),
+    )
+    try:
+        row = result.one()
+        return row.host
+    except NoResultFound:
+        return None
 
 
-def get_room_users(room_id: int, token: str) -> List[RoomUser]:
+def get_room_users(conn, room_id: int, token: str) -> List[RoomUser]:
     room_users = []
-    host: str = get_room_host(room_id)
-    with engine.begin() as conn:
-        result = conn.execute(
-            text(
-                "SELECT `user_id`, `select_difficulty`, `token` FROM `room_members` WHERE `room_id`=:room_id"
-            ),
-            dict(room_id=room_id),
-        )
-        result = result.all()
-        for row in result:
-            user_info: SafeUser = model.get_user_by_token(row.token)
-            room_users.append(
-                RoomUser(
-                    user_id=row.user_id,
-                    name=user_info.name,
-                    leader_card_id=user_info.leader_card_id,
-                    select_difficulty=row.select_difficulty,
-                    is_me=(token == row.token),
-                    is_host=(host == row.user_id),
-                )
+    host: str = get_room_host(conn, room_id)
+    result = conn.execute(
+        text(
+            "SELECT `user_id`, `select_difficulty`, `token` FROM `room_members` WHERE `room_id`=:room_id"
+        ),
+        dict(room_id=room_id),
+    )
+    result = result.all()
+    for row in result:
+        user_info: SafeUser = model.get_user_by_token(row.token)
+        room_users.append(
+            RoomUser(
+                user_id=row.user_id,
+                name=user_info.name,
+                leader_card_id=user_info.leader_card_id,
+                select_difficulty=row.select_difficulty,
+                is_me=(token == row.token),
+                is_host=(host == row.user_id),
             )
-        return room_users
+        )
+    return room_users
 
 
 def wait_room(room_id: int, token: str) -> Tuple[WaitRoomStatus, List[RoomUser]]:
-    room_status = get_room_status(room_id)
-    room_users = get_room_users(room_id, token)
+    with engine.begin() as conn:
+        room_status = get_room_status(conn, room_id)
+        room_users = get_room_users(conn, room_id, token)
     return (room_status, room_users)
 
 
@@ -257,25 +249,27 @@ def show_result(room_id: int) -> List[ResultUser]:
             ),
             dict(
                 room_id=room_id,
-            )
+            ),
         )
         result = result.all()
         for row in result:
-            if(row.status == 1):
-                return [] # まだ全員がリザルト画面に遷移していない場合
+            if row.status == 1:
+                return []  # まだ全員がリザルト画面に遷移していない場合
             user_result_list.append(
                 ResultUser(
                     user_id=row.user_id,
-                    judge_count_list=[row.perfect, row.great, row.good, row.bad, row.miss],
-                    score=row.score
+                    judge_count_list=[
+                        row.perfect,
+                        row.great,
+                        row.good,
+                        row.bad,
+                        row.miss,
+                    ],
+                    score=row.score,
                 )
             )
         conn.execute(
-            text(
-                "UPDATE `room` SET `status`=3 WHERE `room_id`=:room_id"
-            ),
-            dict(
-                room_id=room_id
-            )
+            text("UPDATE `room` SET `status`=3 WHERE `room_id`=:room_id"),
+            dict(room_id=room_id),
         )
         return user_result_list

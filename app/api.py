@@ -9,10 +9,10 @@ from pyparsing import empty
 from app.room_model import (
     JoinRoomResult,
     LiveDifficulty,
+    ResultUser,
     RoomInfo,
     RoomUser,
     WaitRoomStatus,
-    ResultUser,
 )
 
 from . import model, room_model
