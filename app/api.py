@@ -146,3 +146,15 @@ class RoomStartRequest(BaseModel):
 def room_start(req: RoomStartRequest, token: str = Depends(get_auth_token)):
     room_model.start_room(req.room_id, token)
     return {}
+
+
+class RoomEndRequest(BaseModel):
+    room_id: int
+    score: int
+    judge_count_list: List[int]
+
+
+@app.post("/room/end", response_model=Empty)
+def room_end(req: RoomEndRequest, token: str = Depends(get_auth_token)):
+    room_model.finish_room(req.room_id, req.score, req.judge_count_list, token)
+    return {}

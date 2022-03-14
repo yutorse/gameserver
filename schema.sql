@@ -23,6 +23,12 @@ CREATE TABLE `room_members` (
   `room_id` bigint NOT NULL,
   `user_id` bigint NOT NULL,
   `select_difficulty` int DEFAULT NULL,
+  `score` int DEFAULT NULL,
+  `perfect` int DEFAULT NULL,
+  `great` int DEFAULT NULL,
+  `good` int DEFAULT NULL,
+  `bad` int DEFAULT NULL,
+  `miss` int DEFAULT NULL,
   `token` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`room_id`, `user_id`)
 );

@@ -212,4 +212,34 @@ def start_room(room_id: int, token: str) -> None:
             text("UPDATE `room` SET `status`=2 WHERE `room_id`=:room_id"),
             dict(room_id=room_id),
         )
-    return
+    return None
+
+
+def finish_room(
+    room_id: int, score: int, judge_count_list: List[int], token: str
+) -> None:
+    perfect_count = judge_count_list[0]
+    great_count = judge_count_list[1]
+    good_count = judge_count_list[2]
+    bad_count = judge_count_list[3]
+    miss_count = judge_count_list[4]
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "UPDATE `room_members` SET `score`=:score, `perfect`=:perfect, `great`=:great, `good`=:good, `bad`=:bad, `miss`=:miss WHERE `room_id`=:room_id AND`token`=:token"
+            ),
+            dict(
+                score=score,
+                perfect=perfect_count,
+                great=great_count,
+                good=good_count,
+                bad=bad_count,
+                miss=miss_count,
+                room_id=room_id,
+                token=token,
+            ),
+        )
+        conn.execute(
+            text("DELETE FROM `room` WHERE `room_id`=:room_id"), dict(room_id=room_id)
+        )
+    return None
