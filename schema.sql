@@ -1,3 +1,4 @@
+-- SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS `user`;
 CREATE TABLE `user` (
   `id` bigint NOT NULL AUTO_INCREMENT,
@@ -30,7 +31,6 @@ CREATE TABLE `room_members` (
   `good` int DEFAULT NULL,
   `bad` int DEFAULT NULL,
   `miss` int DEFAULT NULL,
-  `token` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`room_id`, `user_id`),
   FOREIGN KEY `room_id` (`room_id`) REFERENCES `room` (`room_id`) ON DELETE CASCADE,
   FOREIGN KEY `user_id` (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE

@@ -12,7 +12,7 @@ from sqlalchemy.exc import NoResultFound
 
 from . import model
 from .db import engine
-from .model import SafeUser
+from .model import SafeUser, get_user_by_token
 
 MAX_USER_COUNT = 4  # 部屋に入れる最大人数
 
@@ -70,13 +70,12 @@ def create_room(live_id: int, select_difficulty: LiveDifficulty, token: str) -> 
         room_id = result.lastrowid  # 最後の行を参照することで room_id を取得
         conn.execute(
             text(
-                "INSERT INTO `room_members` (room_id, user_id, select_difficulty, token) VALUES (:room_id, :user_id, :select_difficulty, :token)"
+                "INSERT INTO `room_members` (room_id, user_id, select_difficulty) VALUES (:room_id, :user_id, :select_difficulty)"
             ),
             dict(
                 room_id=room_id,
                 user_id=user_id,
-                select_difficulty=select_difficulty.value,
-                token=token,
+                select_difficulty=select_difficulty.value
             ),
         )
     return room_id
@@ -127,7 +126,7 @@ def join_room(room_id: int, select_difficulty: int, token: str) -> JoinRoomResul
             if row.joined_user_count < MAX_USER_COUNT:
                 query = (
                     "UPDATE `room` SET `joined_user_count`=:increment_user_count WHERE `room_id`=:room_id;"
-                    "INSERT INTO `room_members` (room_id, user_id, select_difficulty, token) VALUES (:room_id, :user_id, :select_difficulty, :token)"
+                    "INSERT INTO `room_members` (room_id, user_id, select_difficulty) VALUES (:room_id, :user_id, :select_difficulty)"
                 )
                 conn.execute(
                     text(query),
@@ -135,8 +134,7 @@ def join_room(room_id: int, select_difficulty: int, token: str) -> JoinRoomResul
                         increment_user_count=(row.joined_user_count + 1),
                         room_id=room_id,
                         user_id=user_id,
-                        select_difficulty=select_difficulty,
-                        token=token,
+                        select_difficulty=select_difficulty
                     ),
                 )
                 return JoinRoomResult.Ok
@@ -182,18 +180,17 @@ def get_room_users(conn, room_id: int, token: str) -> List[RoomUser]:
     host: str = get_room_host(conn, room_id)
     result = conn.execute(
         text(
-            "SELECT `user_id`, `select_difficulty`, `token` FROM `room_members` WHERE `room_id`=:room_id"
+            "SELECT `user_id`, `select_difficulty`, `name`, `token`, `leader_card_id` FROM `room_members` INNER JOIN `user` ON `room_members`.`user_id` = `user`.`id` WHERE `room_id`=:room_id"
         ),
         dict(room_id=room_id),
     )
     result = result.all()
     for row in result:
-        user_info: SafeUser = model.get_user_by_token(row.token)
         room_users.append(
             RoomUser(
                 user_id=row.user_id,
-                name=user_info.name,
-                leader_card_id=user_info.leader_card_id,
+                name=row.name,
+                leader_card_id=row.leader_card_id,
                 select_difficulty=row.select_difficulty,
                 is_me=(token == row.token),
                 is_host=(host == row.user_id),
@@ -226,10 +223,11 @@ def finish_room(
     good_count = judge_count_list[2]
     bad_count = judge_count_list[3]
     miss_count = judge_count_list[4]
+    user_id = get_user_by_token(token).id
     with engine.begin() as conn:
         conn.execute(
             text(
-                "UPDATE `room_members` SET `status`=2, `score`=:score, `perfect`=:perfect, `great`=:great, `good`=:good, `bad`=:bad, `miss`=:miss WHERE `room_id`=:room_id AND`token`=:token"
+                "UPDATE `room_members` SET `status`=2, `score`=:score, `perfect`=:perfect, `great`=:great, `good`=:good, `bad`=:bad, `miss`=:miss WHERE `room_id`=:room_id AND`user_id`=:user_id"
             ),
             dict(
                 score=score,
@@ -239,7 +237,7 @@ def finish_room(
                 bad=bad_count,
                 miss=miss_count,
                 room_id=room_id,
-                token=token,
+                user_id=user_id,
             ),
         )
     return None
