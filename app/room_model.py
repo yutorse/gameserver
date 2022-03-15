@@ -88,24 +88,25 @@ def get_room_list(live_id: int) -> List[RoomInfo]:  # roomが存在しないと�
     with engine.begin() as conn:
         if live_id == 0:
             result = conn.execute(
-                text("SELECT `room_id`, `live_id`, `joined_user_count` FROM `room`"),
+                text("SELECT `room_id`, `live_id`, `joined_user_count`, `status` FROM `room`"),
             )
         else:
             result = conn.execute(
                 text(
-                    "SELECT `room_id`, `live_id`, `joined_user_count` FROM `room` WHERE `live_id`=:live_id"
+                    "SELECT `room_id`, `live_id`, `joined_user_count`, `status` FROM `room` WHERE `live_id`=:live_id"
                 ),
                 dict(live_id=live_id),
             )
         result = result.all()
         for row in result:
-            available_rooms.append(
-                RoomInfo(
-                    room_id=row.room_id,
-                    live_id=row.live_id,
-                    joined_user_count=row.joined_user_count,
+            if row.status == 1:
+                available_rooms.append(
+                    RoomInfo(
+                        room_id=row.room_id,
+                        live_id=row.live_id,
+                        joined_user_count=row.joined_user_count,
+                    )
                 )
-            )
         return available_rooms
 
 
