@@ -31,5 +31,7 @@ CREATE TABLE `room_members` (
   `bad` int DEFAULT NULL,
   `miss` int DEFAULT NULL,
   `token` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`room_id`, `user_id`)
+  PRIMARY KEY (`room_id`, `user_id`),
+  FOREIGN KEY `room_id` (`room_id`) REFERENCES `room` (`room_id`) ON DELETE CASCADE,
+  FOREIGN KEY `user_id` (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
 );
