@@ -157,6 +157,8 @@ class RoomEndRequest(BaseModel):
 
 @app.post("/room/end", response_model=Empty)
 def room_end(req: RoomEndRequest, token: str = Depends(get_auth_token)):
+    if len(req.judge_count_list) != 5:
+        raise HTTPException(status_code=400, detail="invalid judge_count")
     room_model.finish_room(req.room_id, req.score, req.judge_count_list, token)
     return {}
 
