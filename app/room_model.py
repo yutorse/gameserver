@@ -1,3 +1,4 @@
+from curses.ascii import HT
 import json
 import uuid
 from curses import REPORT_MOUSE_POSITION
@@ -113,12 +114,15 @@ def join_room(room_id: int, select_difficulty: int, token: str) -> JoinRoomResul
     with engine.begin() as conn:
         result = conn.execute(
             text(
-                "SELECT `room_id`, `live_id`, `joined_user_count` FROM `room` WHERE `room_id`=:room_id"
+                "SELECT `room_id`, `live_id`, `joined_user_count`, `host` FROM `room` WHERE `room_id`=:room_id"
             ),
             dict(room_id=room_id),
         )
         try:
             row = result.one()
+            user_id = model.get_user_by_token(token).id
+            if row.host == user_id:  # host の自身が立てた room への join を禁止する
+                raise HTTPException(status_code=400, detail="host cannot join to the room which he creates.")
             if row.joined_user_count < MAX_USER_COUNT:
                 query = (
                     "UPDATE `room` SET `joined_user_count`=:increment_user_count WHERE `room_id`=:room_id;"
@@ -129,7 +133,7 @@ def join_room(room_id: int, select_difficulty: int, token: str) -> JoinRoomResul
                     dict(
                         increment_user_count=(row.joined_user_count + 1),
                         room_id=room_id,
-                        user_id=model.get_user_by_token(token).id,
+                        user_id=user_id,
                         select_difficulty=select_difficulty,
                         token=token,
                     ),
